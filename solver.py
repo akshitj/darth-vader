@@ -6,39 +6,58 @@ final_assignment = []
 iter_count = 0
 
 
-def alter_bins_items_for_gap(items, bins, AD_SPOT_GAP):
+def alter_cost_ratings(items, bins, plan_data):
+    """
+
+    :param items:
+    :param bins:
+    :param plan_data: globals.PlanData
+    :return:
+    """
     weights = [item[0] for item in items]
 
-    min_weight = min(weights)
-    max_weight = max(weights)
+    min_weight = min(weights) - plan_data.AD_SPOT_GAP
+    max_weight = max(weights) - plan_data.AD_SPOT_GAP
 
     # decrease cost per second by this factor
-    gamma_cps = 1 / (1 + float(AD_SPOT_GAP) / min_weight)
+    gamma_cps = 1 / (1 + float(plan_data.AD_SPOT_GAP) / min_weight)
 
     # decrease rating per second by this factor
-    gamma_rps = 1 / (1 + float(AD_SPOT_GAP) / max_weight)
+    gamma_rps = 1 / (1 + float(plan_data.AD_SPOT_GAP) / max_weight)
 
     for idx, bin in enumerate(bins):
-        # increase capacity by filler amount
-        bins[idx][0] += AD_SPOT_GAP
         # decrease rating for the accomodated fillers
         bins[idx][2] *= gamma_rps
         # decrease cost for the accomodated fillers
         bins[idx][1] *= gamma_cps
 
+
+def add_dummy_fillers(items, bins, plan_data):
+    """
+
+    :param items:
+    :param bins:
+    :param plan_data: globals.PlanData
+    :return:
+    """
+
     # add filler to each ad
     for idx, item in enumerate(items):
         # add filler to duration
-        items[idx][0] += AD_SPOT_GAP
+        items[idx][0] += plan_data.AD_SPOT_GAP
+
+    for idx, bin in enumerate(bins):
+        # increase capacity by filler amount
+        bins[idx][0] += plan_data.AD_SPOT_GAP
 
 
-def relaxed_soln(items, bins, max_cost):
+def relaxed_soln(items, bins, max_cost, plan_data):
     M = len(bins)
     N = len(items)
     if N == 0:
         return 0
 
-    # alter_bins_items_for_gap(items, bins)
+    alter_cost_ratings(items, bins, plan_data)
 
     capacity = [bin[0] for bin in bins]
     rate = [bin[1] for bin in bins]
@@ -117,35 +136,31 @@ def branch_and_bound(items, cur_item_idx, bins, cur_val, assignment, cur_cost, m
         if bin[0] < cur_item[0]:
             continue
 
-        cur_cost += bin[1] * cur_item[0]
+        cur_cost += bin[1] * (cur_item[0] - plan_data.AD_SPOT_GAP)
         if max_cost <= cur_cost:
-            return
+            continue
 
         bins[idx][0] -= cur_item[0]
         assignment[cur_item_idx] = idx
-        cur_val += cur_item[0] * bin[2]
+        cur_val += bin[2] * (cur_item[0] - plan_data.AD_SPOT_GAP)
 
         if plan_data.BOUND_TREE:
-            upper_bound = relaxed_soln(items[cur_item_idx + 1:], bins[:], max_cost - cur_cost)
+            upper_bound = relaxed_soln(items[cur_item_idx + 1:], bins[:], max_cost - cur_cost, plan_data)
         else:
             # some large value
             upper_bound = 1000
 
-        if upper_bound < 0:
-            # no feasible soln found
-            return
-        upper_bound += cur_val
+        if upper_bound >= 0:
+            # feasible soln found
+            upper_bound += cur_val
+            if cur_cost <= max_cost and upper_bound >= plan_data.max_rating:
+                print "tentative hike of rating to: ", upper_bound
+                branch_and_bound(items, cur_item_idx + 1, bins, cur_val, assignment, cur_cost, max_cost, plan_data)
 
-        if cur_cost <= max_cost and upper_bound >= max_rating:
-            print "tentative hike of rating to: ", upper_bound
-            branch_and_bound(items, cur_item_idx + 1, bins, cur_val, assignment, cur_cost, max_cost, plan_data)
-
-        bins[idx][0] += cur_item[0]
+        cur_val -= bin[2] * (cur_item[0] - plan_data.AD_SPOT_GAP)
         assignment[cur_item_idx] = -1
-        cur_val -= cur_item[0] * bin[2]
-        cur_cost -= bin[1] * cur_item[0]
-
-    return
+        bins[idx][0] += cur_item[0]
+        cur_cost -= bin[1] * (cur_item[0] - plan_data.AD_SPOT_GAP)
 
 
 def get_item_key(item):
@@ -157,6 +172,8 @@ def get_bin_key(bin):
     # rating
     return bin[2]
 
+def get_item_idx(item):
+    return item[2]
 
 def get_max_rating(bins, items, max_val, plan_data):
     """
@@ -167,6 +184,10 @@ def get_max_rating(bins, items, max_val, plan_data):
     :param plan_data: globals.PlanData
     :return:
     """
+    original_items = items[:]
+    # add original index
+    items = [item+[idx] for idx, item in enumerate(items)]
+
     # reorder items according to duration
     items = sorted(items, key=get_item_key, reverse=True)
     print "sorted items are: ", items
@@ -175,10 +196,24 @@ def get_max_rating(bins, items, max_val, plan_data):
     bins = sorted(bins, key=get_bin_key, reverse=True)
     print "sorted bins are: ", bins
 
-    # relaxed_soln(items, bins, max_val)
+    add_dummy_fillers(items, bins, plan_data)
 
-    # return
+    print "after adding dummy fillers are: ", items, bins
+
     assignment = [-1] * len(items)
     branch_and_bound(items, 0, bins, 0, assignment, 0, max_val, plan_data)
     print "max rating for non relaxed constraints is ", plan_data.max_rating, " with assignment ", \
         plan_data.final_assignment
+
+    for idx, item in enumerate(items):
+        items[idx][0] -= plan_data.AD_SPOT_GAP
+
+    parsed_assignment = [ [bins[bin_idx][2]*items[item_idx][0], bins[bin_idx][3]] for item_idx, bin_idx in enumerate(plan_data.final_assignment)]
+
+    items = [items[idx]+assignment for idx, assignment in enumerate(parsed_assignment)]
+    items = sorted(items, key=get_item_idx)
+    for item in items:
+        del item[2]
+    print "max rating for non relaxed constraints is ", plan_data.max_rating, " with assignment ", \
+        items
+    return items
