@@ -1,16 +1,26 @@
-from parse_input import get_input
-from parse_input import write_output
+import parse_input
 from globals import PlanData
+from globals import TimeBands
+from globals import dayparts
 
 # main function. first point of execution
 if __name__ == "__main__":
 
     input_file_name = '/home/akshit/ad-planner/ad-planner-op.xls'
+    time_bands_file = 'time-bands.csv'
 
     # return
-    plan_data = PlanData()
-    get_input(input_file_name, plan_data)
+    plan_data = dict()
+    day_parts = dayparts[:]
 
-    plan_data.get_max_ratings()
+    tb = TimeBands()
+    tb.load_from_file(time_bands_file)
 
-    write_output(input_file_name, "time-band.xls", plan_data)
+    for day_part in day_parts[:]:
+        plan_data[day_part] = PlanData(daypart_name=day_part)
+        parse_input.get_input(input_file_name, day_part, plan_data[day_part])
+        plan_data[day_part].fill_bins(tb.time_bands_map[day_part])
+        plan_data[day_part].get_max_ratings()
+        print "-----------------------------------------------------------------------------------------------------"
+
+    parse_input.write_output(input_file_name, "time-band.xls", plan_data)

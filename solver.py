@@ -11,7 +11,7 @@ def alter_cost_ratings(items, bins, plan_data):
 
     :param items:
     :param bins:
-    :param plan_data: globals.PlanData
+    :param plan_data (globals.PlanData):
     :return:
     """
     weights = [item[0] for item in items]
@@ -97,10 +97,10 @@ def relaxed_soln(items, bins, max_cost, plan_data):
 
     res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq)
     if not res.success:
-        print "unsuccessful with items: ", items, ", bins: ", bins, ", avl_cost: ", max_cost, " res: ", res
+        # print "unsuccessful with items: ", items, ", bins: ", bins, ", avl_cost: ", max_cost, " res: ", res
         # return negative rating for not possible
         return -1
-    print "maximum ratings achieved ", res.fun, "  with assignment \n", np.reshape(res.x, (N, M))
+    # print "maximum ratings achieved ", res.fun, "  with assignment \n", np.reshape(res.x, (N, M))
     return -1 * res.fun
 
 
@@ -154,7 +154,7 @@ def branch_and_bound(items, cur_item_idx, bins, cur_val, assignment, cur_cost, m
             # feasible soln found
             upper_bound += cur_val
             if cur_cost <= max_cost and upper_bound >= plan_data.max_rating:
-                print "tentative hike of rating to: ", upper_bound
+                # print "tentative hike of rating to: ", upper_bound
                 branch_and_bound(items, cur_item_idx + 1, bins, cur_val, assignment, cur_cost, max_cost, plan_data)
 
         cur_val -= bin[2] * (cur_item[0] - plan_data.AD_SPOT_GAP)
