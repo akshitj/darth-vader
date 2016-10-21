@@ -50,7 +50,7 @@ def add_dummy_fillers(items, bins, plan_data):
         # increase capacity by filler amount
         bins[idx][0] += plan_data.AD_SPOT_GAP
 
-
+# @profile
 def relaxed_soln(items, bins, max_cost, plan_data):
     M = len(bins)
     N = len(items)
@@ -95,15 +95,39 @@ def relaxed_soln(items, bins, max_cost, plan_data):
         opt_coeff[:, i] = -1 * ratings[i]
     c = opt_coeff.flatten()
 
-    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq)
+    res = linprog(c, A_ub=A_ub, b_ub=b_ub, A_eq=A_eq, b_eq=b_eq, options={"maxiter":100})
     if not res.success:
         # print "unsuccessful with items: ", items, ", bins: ", bins, ", avl_cost: ", max_cost, " res: ", res
         # return negative rating for not possible
         return -1
     # print "maximum ratings achieved ", res.fun, "  with assignment \n", np.reshape(res.x, (N, M))
+    print "iterations: ", res.nit
     return -1 * res.fun
 
 
+# this will give at least how much cost is required to get least ratings
+def get_lower_bound(items, bins):
+    if len(items) == 0:
+        # no cost is required for no items
+        return 0
+
+    # todo: change logic to knapsack for better lower bound
+    # start filling lowest cost bin
+    bins_idx = len(bins) - 1
+    total_spot_len = sum(item[0] for item in items)
+    min_cost = 0
+    while total_spot_len > 0 and bins_idx >= 0:
+        deduction = min(total_spot_len, bins[bins_idx][0])
+        total_spot_len -= deduction
+        min_cost += deduction * bins[bins_idx][1]
+        bins_idx -= 1
+    if total_spot_len > 0:
+        # not enough bins return some high no.
+        return 100000000
+    return min_cost
+
+
+# @profile
 def branch_and_bound(items, cur_item_idx, bins, cur_val, assignment, cur_cost, max_cost, plan_data):
     """
 
@@ -146,14 +170,16 @@ def branch_and_bound(items, cur_item_idx, bins, cur_val, assignment, cur_cost, m
 
         if plan_data.BOUND_TREE:
             upper_bound = relaxed_soln(items[cur_item_idx + 1:], bins[:], max_cost - cur_cost, plan_data)
+            cost_lower_bound = get_lower_bound(items[cur_item_idx + 1:], bins[:])
         else:
             # some large value
             upper_bound = 1000
+            cost_lower_bound = 0
 
         if upper_bound >= 0:
             # feasible soln found
             upper_bound += cur_val
-            if cur_cost <= max_cost and upper_bound >= plan_data.max_rating:
+            if cur_cost + cost_lower_bound <= max_cost and upper_bound >= plan_data.max_rating:
                 # print "tentative hike of rating to: ", upper_bound
                 branch_and_bound(items, cur_item_idx + 1, bins, cur_val, assignment, cur_cost, max_cost, plan_data)
 
@@ -172,8 +198,10 @@ def get_bin_key(bin):
     # rating
     return bin[2]
 
+
 def get_item_idx(item):
     return item[2]
+
 
 def get_max_rating(bins, items, max_val, plan_data):
     """
@@ -184,9 +212,10 @@ def get_max_rating(bins, items, max_val, plan_data):
     :param plan_data: globals.PlanData
     :return:
     """
-    original_items = items[:]
+    print "trying to maximise rating with margin: ", plan_data.margin, "%"
+
     # add original index
-    items = [item+[idx] for idx, item in enumerate(items)]
+    items = [item + [idx] for idx, item in enumerate(items)]
 
     # reorder items according to duration
     items = sorted(items, key=get_item_key, reverse=True)
@@ -208,9 +237,11 @@ def get_max_rating(bins, items, max_val, plan_data):
     for idx, item in enumerate(items):
         items[idx][0] -= plan_data.AD_SPOT_GAP
 
-    parsed_assignment = [ [bins[bin_idx][2]*items[item_idx][0], bins[bin_idx][3]] for item_idx, bin_idx in enumerate(plan_data.final_assignment)]
+    parsed_assignment = [
+        [bins[bin_idx][2] * items[item_idx][0], bins[bin_idx][3], bins[bin_idx][1] * items[item_idx][0]]
+        for item_idx, bin_idx in enumerate(plan_data.final_assignment)]
 
-    items = [items[idx]+assignment for idx, assignment in enumerate(parsed_assignment)]
+    items = [items[idx] + assignment for idx, assignment in enumerate(parsed_assignment)]
     items = sorted(items, key=get_item_idx)
     for item in items:
         del item[2]

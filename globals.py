@@ -6,8 +6,8 @@ class PlanData:
     # constants
     BIN_CAPACITY = 0
     AD_SPOT_GAP = 0
-    BOUND_TREE = False
-    ENABLE_GAP_CONSTRAINT = True
+    BOUND_TREE = True
+    ENABLE_GAP_CONSTRAINT = False
 
     # variables
     iter_count = 0
@@ -33,6 +33,10 @@ class PlanData:
         self.items = []
         for idx in range(len(revenue)):
             self.items += [[spot_lengths[idx], revenue[idx]]]
+        self.get_availiable_currency()
+
+    def set_margin(self, margin_percentage):
+        self.margin = margin_percentage
         self.get_availiable_currency()
 
     def fill_bins(self, time_bands):

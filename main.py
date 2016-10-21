@@ -6,7 +6,8 @@ from globals import dayparts
 # main function. first point of execution
 if __name__ == "__main__":
 
-    input_file_name = '/home/akshit/ad-planner/ad-planner-op.xls'
+    # input_file_name = '/home/akshit/ad-planner/ad-planner-op.xls'
+    input_file_name = '/home/akshit/Downloads/ZT-2016-10-22-plan-1-plan.xls'
     time_bands_file = 'time-bands.csv'
 
     # return
@@ -16,7 +17,7 @@ if __name__ == "__main__":
     tb = TimeBands()
     tb.load_from_file(time_bands_file)
 
-    for day_part in day_parts[:]:
+    for day_part in day_parts:
         plan_data[day_part] = PlanData(daypart_name=day_part)
         parse_input.get_input(input_file_name, day_part, plan_data[day_part])
         plan_data[day_part].fill_bins(tb.time_bands_map[day_part])

@@ -48,7 +48,13 @@ def get_input(file_name, daypart_name, planData):
 
     revenues = day_part_df.ix[:, 2].tolist()[1:-1]
     revenues = map(int, revenues)
+
+    margins = day_part_df.ix[:, 4].tolist()[1:-1]
+    margins = map(int, margins)
     planData.fill_items(spot_lengths, revenues)
+
+    margin_percentage = (sum(margins)*100)/sum(revenues)
+    planData.set_margin(margin_percentage)
 
 
 def write_output(in_file_name, out_file_name, plan_data_map):
@@ -60,6 +66,8 @@ def write_output(in_file_name, out_file_name, plan_data_map):
 
     time_column = [""] * df.shape[0]
     rating_column = [""] * df.shape[0]
+    spot_cost_column = [""] * df.shape[0]
+    margin_column = [""] * df.shape[0]
 
     for day_part in dayparts:
         plan_data = plan_data_map[day_part]
@@ -75,8 +83,22 @@ def write_output(in_file_name, out_file_name, plan_data_map):
         ratings = ["ratings"] + ratings + [sum(ratings)]
         rating_column[start_idx + 1:start_idx + 1 + len(ratings)] = ratings
 
+        #spot cost
+        costs = [assignment[4] for assignment in plan_data.final_assignment]
+        costs = ["spot_costs"] + costs + [sum(costs)]
+        spot_cost_column[start_idx + 1:start_idx + 1 + len(costs)] = costs
+
+        #margin
+        margins = [assignment[1] - assignment[4] for assignment in plan_data.final_assignment]
+        margins = ["margin"] + margins + [sum(margins)]
+        margin_column[start_idx + 1:start_idx + 1 + len(margins)] = margins
+
     df.insert(1, "ratings", rating_column)
     df.insert(1, "time_band", time_column)
+    df.insert(1, "spot_costs", spot_cost_column)
+    df.insert(1, "margin", margin_column)
+
+
 
     # day_parts = df.ix[:, 0].tolist()
     # morning_idx = find_substr_idx("Morning", day_parts)
