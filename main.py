@@ -7,7 +7,7 @@ from globals import dayparts
 if __name__ == "__main__":
 
     # input_file_name = '/home/akshit/ad-planner/ad-planner-op.xls'
-    input_file_name = '/home/akshit/Downloads/ZT-2016-10-22-plan-1-plan.xls'
+    input_file_name = '/home/akshit/Downloads/ZT-2016-10-24-plan-1-intermediate-21-10-2016--14-7-48.xls'
     time_bands_file = 'time-bands.csv'
 
     # return

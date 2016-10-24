@@ -70,7 +70,11 @@ def write_output(in_file_name, out_file_name, plan_data_map):
     margin_column = [""] * df.shape[0]
 
     for day_part in dayparts:
-        plan_data = plan_data_map[day_part]
+        try:
+            plan_data = plan_data_map[day_part]
+        except KeyError:
+            print "no plan computed/found for ", day_part
+            continue
         start_idx, end_idx = get_start_end_idx(df, day_part)
 
         # time column

@@ -1,12 +1,13 @@
 from solver import get_max_rating
+from solver import integer_soln
 import parse_input
-
+import sys
 
 class PlanData:
     # constants
     BIN_CAPACITY = 0
     AD_SPOT_GAP = 0
-    BOUND_TREE = True
+    BOUND_TREE = False
     ENABLE_GAP_CONSTRAINT = False
 
     # variables
