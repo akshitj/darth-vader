@@ -301,7 +301,7 @@ def get_bin_key(bin):
 def get_item_idx(item):
     return item[2]
 
-@profile
+# @profile
 def get_max_rating(bins, items, max_val, plan_data):
     """
 

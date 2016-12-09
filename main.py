@@ -3,11 +3,12 @@ from globals import PlanData
 from globals import TimeBands
 from globals import dayparts
 
+
 # main function. first point of execution
 if __name__ == "__main__":
 
     # input_file_name = '/home/akshit/ad-planner/ad-planner-op.xls'
-    input_file_name = '/home/akshit/Downloads/ZT-2016-10-24-plan-1-intermediate-21-10-2016--14-7-48.xls'
+    input_file_name = '/home/akshit/Downloads/ZT-2016-10-28-plan-1-intermediate-27-10-2016--15-32-36.xls'
     time_bands_file = 'time-bands.csv'
 
     # return
